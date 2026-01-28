@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react"
-
 import { useState } from "react";
 import { Category } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -44,11 +42,12 @@ const categories: Category[] = [
   "Technology",
 ];
 
-function generatePassword(length = 16): string {
-  const chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-  return Array.from(crypto.getRandomValues(new Uint32Array(length)))
-    .map((n) => chars[n % chars.length])
+const PASSWORD_LENGTH = 16;
+const PASSWORD_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+
+function generatePassword(): string {
+  return Array.from(crypto.getRandomValues(new Uint32Array(PASSWORD_LENGTH)))
+    .map((n) => PASSWORD_CHARS[n % PASSWORD_CHARS.length])
     .join("");
 }
 
@@ -65,7 +64,7 @@ export function AddPasswordDialog({ onAdd }: AddPasswordDialogProps) {
     notes: "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -77,14 +76,7 @@ export function AddPasswordDialog({ onAdd }: AddPasswordDialogProps) {
         website: form.website || undefined,
         notes: form.notes || undefined,
       });
-      setForm({
-        service_name: "",
-        username: "",
-        password: "",
-        category: "Technology",
-        website: "",
-        notes: "",
-      });
+      handleResetForm();
       setOpen(false);
     } finally {
       setLoading(false);
@@ -93,6 +85,18 @@ export function AddPasswordDialog({ onAdd }: AddPasswordDialogProps) {
 
   const handleGeneratePassword = () => {
     setForm((prev) => ({ ...prev, password: generatePassword() }));
+  };
+
+  const handleResetForm = () => {
+    setForm({
+      service_name: "",
+      username: "",
+      password: "",
+      category: "Technology",
+      website: "",
+      notes: "",
+    });
+    setShowPassword(false);
   };
 
   return (
@@ -138,42 +142,43 @@ export function AddPasswordDialog({ onAdd }: AddPasswordDialogProps) {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password *</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={form.password}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, password: e.target.value }))
-                  }
-                  placeholder="••••••••"
-                  className="border-border bg-secondary pr-10 font-mono"
-                />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                required
+                value={form.password}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, password: e.target.value }))
+                }
+                placeholder="Enter or generate password"
+                className="border-border bg-secondary pr-16 font-mono"
+              />
+              <div className="absolute right-1 top-1/2 flex -translate-y-1/2 gap-0.5">
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={handleGeneratePassword}
+                  className="h-7 w-7"
+                  title="Generate password"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="h-7 w-7"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
+                    <EyeOff className="h-3.5 w-3.5" />
                   ) : (
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3.5 w-3.5" />
                   )}
                 </Button>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={handleGeneratePassword}
-                title="Generate password"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
             </div>
           </div>
 
@@ -189,9 +194,9 @@ export function AddPasswordDialog({ onAdd }: AddPasswordDialogProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-border bg-popover">
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
                   </SelectItem>
                 ))}
               </SelectContent>

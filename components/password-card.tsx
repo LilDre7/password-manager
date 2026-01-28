@@ -20,7 +20,7 @@ export function PasswordCard({ entry, onClick }: PasswordCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary">
           <ServiceIcon
-            serviceName={entry.service_name}
+            category={entry.category}
             className="h-5 w-5 text-foreground/80"
           />
         </div>

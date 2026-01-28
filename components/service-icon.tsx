@@ -1,43 +1,35 @@
 "use client"
 
 import React from "react"
-
 import {
-  Mail,
-  Github,
-  Instagram,
+  Users,
   Landmark,
-  Linkedin,
   GraduationCap,
-  Twitter,
-  Building2,
-  Cloud,
-  MessageSquare,
-  BookOpen,
+  Briefcase,
+  Shield,
+  Code,
   Globe,
 } from "lucide-react"
-
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Gmail: Mail,
-  GitHub: Github,
-  Instagram: Instagram,
-  "Chase Bank": Landmark,
-  LinkedIn: Linkedin,
-  Coursera: GraduationCap,
-  "Twitter / X": Twitter,
-  "IRS.gov": Building2,
-  AWS: Cloud,
-  Slack: MessageSquare,
-  Udemy: BookOpen,
-  "Bank of America": Landmark,
-}
+import { Category } from "@/lib/types"
 
 interface ServiceIconProps {
-  serviceName: string
+  category: Category
   className?: string
 }
 
-export function ServiceIcon({ serviceName, className = "h-5 w-5" }: ServiceIconProps) {
-  const Icon = iconMap[serviceName] || Globe
+const categoryIcons: Record<Category, React.ComponentType<{ className?: string }>> = {
+  Social: Users,
+  Bank: Landmark,
+  Learning: GraduationCap,
+  Business: Briefcase,
+  Government: Shield,
+  Technology: Code,
+}
+
+export function ServiceIcon({ 
+  category, 
+  className = "h-5 w-5" 
+}: ServiceIconProps) {
+  const Icon = categoryIcons[category] || Globe
   return <Icon className={className} />
 }
