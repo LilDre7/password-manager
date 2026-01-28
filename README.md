@@ -50,7 +50,7 @@ Check out the live application: [Vault Password Manager](https://v0-passyourpass
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/vault-password-manager.git
+   git clone https://github.com/LilDre7/password-manager
    cd vault-password-manager
    ```
 
@@ -162,9 +162,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Your Name**
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- LinkedIn: [Your Name](https://linkedin.com/in/yourprofile)
-- Portfolio: [yourwebsite.com](https://yourwebsite.com)
+- GitHub: [@yourusername](https://github.com/LilDre7)
+- LinkedIn: [Your Name](https://www.linkedin.com/in/alvaro-aburto-dev/)
+- Portfolio: [yourwebsite.com](https://alvaro-aburto.vercel.app/)
 
 ## 🙏 Acknowledgments
 
@@ -177,7 +177,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you have any questions or need help, please:
 
 - Open an issue on GitHub
-- Contact at your-email@example.com
+- Contact at alvaroaburto71@gmail.com
 
 ---
 
