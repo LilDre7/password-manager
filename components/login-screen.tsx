@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +12,8 @@ import {
   EyeOff,
   Loader2,
   ArrowRight,
+  Link,
+  RefreshCw,
 } from "lucide-react";
 import Image from "next/image";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,7 +35,54 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [activeSlide, setActiveSlide] = useState(2);
 
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPasswordForEmail } = useAuth();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+
+  // Función para generar contraseña segura y copiarla al portapapeles
+  const generatePassword = async () => {
+    const length = 16;
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    setPassword(password);
+    setShowPassword(true); // Mostrar la contraseña generada
+    
+    // Copiar al portapapeles
+    try {
+      await navigator.clipboard.writeText(password);
+      toast("No olvides tu contraseña, amigo", {
+        description: "Contraseña copiada al portapapeles. Asegúrate de guardarla en un lugar seguro",
+      });
+    } catch (err) {
+      // Si falla copiar, aún mostrar el toast
+      toast("No olvides tu contraseña, amigo", {
+        description: "Asegúrate de guardarla en un lugar seguro",
+      });
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!forgotPasswordEmail.trim()) return;
+    setForgotPasswordLoading(true);
+    try {
+      await resetPasswordForEmail(forgotPasswordEmail.trim());
+      toast("Correo enviado", {
+        description: "Revisa tu bandeja y usa el enlace para crear una nueva contraseña",
+      });
+      setShowForgotPassword(false);
+      setForgotPasswordEmail("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar el enlace");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,8 +118,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white p-4 sm:p-8">
-      <div className="flex w-full max-w-[1100px] overflow-hidden rounded-none bg-white shadow-none lg:rounded-2xl lg:shadow-sm lg:border lg:border-neutral-100">
+    <div className="flex min-h-screen items-center justify-center bg-black p-4 sm:p-8">
+      <div className="flex w-full max-w-[1100px] overflow-hidden rounded-none bg-black shadow-none lg:rounded-2xl lg:shadow-xl lg:border lg:border-neutral-800">
         {/* Left Panel - Image (Desktop only) */}
         <div className="relative hidden w-[45%] lg:block">
           <div className="relative h-full overflow-hidden">
@@ -84,19 +134,22 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               type="button"
               className="absolute right-8 top-8 z-10 flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm text-white backdrop-blur-md transition-all hover:bg-white/20"
             >
-              Back to website
+              <a href="https://alvaro-aburto.vercel.app/" target="_blank" rel="noopener noreferrer">
+                Back to website
+              </a>
               <ArrowRight className="h-4 w-4" />
             </button>
 
-            {/* Background Image */}
+            {/* Background Image - unoptimized evita diferencias de srcset/sizes entre servidor y cliente */}
             <Image
               src="/login-bg.jpg"
               alt="Desert landscape"
               fill
               className="object-cover"
               priority
+              unoptimized
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/50" />
+            <div className="absolute inset-0 bg-linear-to-br from-black/40 via-black/30 to-black/50" />
 
             {/* Tagline */}
             <div className="absolute bottom-12 left-8 right-8">
@@ -114,11 +167,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   key={index}
                   type="button"
                   onClick={() => setActiveSlide(index)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    activeSlide === index
-                      ? "w-8 bg-white"
-                      : "w-1.5 bg-white/50"
-                  }`}
+                  className={`h-1.5 rounded-full transition-all ${activeSlide === index
+                    ? "w-8 bg-white"
+                    : "w-1.5 bg-white/50"
+                    }`}
                 />
               ))}
             </div>
@@ -129,19 +181,67 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-[55%] lg:px-16 lg:py-16">
           {/* Mobile Logo */}
           <div className="mb-12 flex items-center justify-center gap-2 lg:hidden">
-            <Shield className="h-6 w-6 text-black" />
-            <span className="text-xl font-semibold tracking-wide text-black">
+            <Shield className="h-6 w-6 text-white" />
+            <span className="text-xl font-semibold tracking-wide text-white">
               VAULT
             </span>
           </div>
 
           {/* Content */}
           <div className="mx-auto w-full max-w-sm">
+            {showForgotPassword ? (
+              <>
+                <h1 className="mb-2 text-center text-3xl font-semibold text-white lg:text-left">
+                  ¿Olvidaste tu contraseña?
+                </h1>
+                <p className="mb-6 text-center text-sm text-neutral-400 lg:text-left">
+                  Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.
+                </p>
+                <form onSubmit={handleForgotPasswordSubmit} className="flex flex-col gap-4">
+                  <Input
+                    type="email"
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder="Email"
+                    className="h-11 rounded-lg border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
+                    required
+                  />
+                  {error && (
+                    <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-sm text-red-400">
+                      {error}
+                    </div>
+                  )}
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-lg bg-white text-sm font-medium text-black hover:bg-neutral-200"
+                    disabled={forgotPasswordLoading}
+                  >
+                    {forgotPasswordLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Enviar enlace"
+                    )}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setError(null);
+                      setForgotPasswordEmail("");
+                    }}
+                    className="text-center text-sm text-neutral-400 underline hover:text-neutral-300"
+                  >
+                    Volver al inicio de sesión
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
             {/* Title */}
-            <h1 className="mb-2 text-center text-3xl font-semibold text-black lg:text-left">
+            <h1 className="mb-2 text-center text-3xl font-semibold text-white lg:text-left">
               {activeTab === "signup" ? "Create account" : "Welcome back"}
             </h1>
-            <p className="mb-8 text-center text-sm text-neutral-600 lg:text-left">
+            <p className="mb-8 text-center text-sm text-neutral-400 lg:text-left">
               {activeTab === "signup" ? (
                 <>
                   Already have an account?{" "}
@@ -152,7 +252,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                       setError(null);
                       setMessage(null);
                     }}
-                    className="font-medium text-black underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500"
+                    className="font-medium text-white underline decoration-neutral-500 underline-offset-2 hover:decoration-neutral-400"
                   >
                     Log in
                   </button>
@@ -167,7 +267,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                       setError(null);
                       setMessage(null);
                     }}
-                    className="font-medium text-black underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500"
+                    className="font-medium text-white underline decoration-neutral-500 underline-offset-2 hover:decoration-neutral-400"
                   >
                     Sign up
                   </button>
@@ -184,14 +284,14 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="First name"
-                    className="h-11 flex-1 rounded-lg border-neutral-200 bg-white text-black placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400"
+                    className="h-11 flex-1 rounded-lg border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   />
                   <Input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Last name"
-                    className="h-11 flex-1 rounded-lg border-neutral-200 bg-white text-black placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400"
+                    className="h-11 flex-1 rounded-lg border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   />
                 </div>
               )}
@@ -201,7 +301,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
-                className="h-11 rounded-lg border-neutral-200 bg-white text-black placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400"
+                className="h-11 rounded-lg border-neutral-700 bg-neutral-900 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                 required
               />
 
@@ -211,22 +311,49 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
-                  className="h-11 rounded-lg border-neutral-200 bg-white pr-11 text-black placeholder:text-neutral-400 focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400"
+                  className="h-11 rounded-lg border-neutral-700 bg-neutral-900 pr-24 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
                   required
                   minLength={6}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 transition-colors hover:text-neutral-600"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="text-neutral-500 transition-colors hover:text-neutral-300"
+                    title="Generar contraseña"
+                  >
+                    <RefreshCw className="h-4.5 w-4.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-neutral-500 transition-colors hover:text-neutral-300"
+                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
               </div>
+
+              {activeTab === "login" && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setError(null);
+                      setMessage(null);
+                    }}
+                    className="text-sm text-neutral-400 underline hover:text-neutral-300"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
 
               {activeTab === "signup" && (
                 <div className="flex items-start gap-3">
@@ -236,13 +363,13 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                     onCheckedChange={(checked) =>
                       setAgreedToTerms(checked as boolean)
                     }
-                    className="mt-0.5 border-neutral-300 data-[state=checked]:border-black data-[state=checked]:bg-black"
+                    className="mt-0.5 border-neutral-600 data-[state=checked]:border-white data-[state=checked]:bg-white"
                   />
-                  <label htmlFor="terms" className="text-sm leading-tight text-neutral-600">
+                  <label htmlFor="terms" className="text-sm leading-tight text-neutral-400">
                     I agree to the{" "}
                     <button
                       type="button"
-                      className="text-black underline decoration-neutral-300 underline-offset-2 hover:decoration-neutral-500"
+                      className="text-white underline decoration-neutral-500 underline-offset-2 hover:decoration-neutral-400"
                     >
                       Terms & Conditions
                     </button>
@@ -251,20 +378,20 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
               )}
 
               {error && (
-                <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
+                <div className="rounded-lg bg-red-950/50 border border-red-800 px-4 py-3 text-sm text-red-400">
                   {error}
                 </div>
               )}
 
               {message && (
-                <div className="rounded-lg bg-green-50 border border-green-100 px-4 py-3 text-sm text-green-600">
+                <div className="rounded-lg bg-green-950/50 border border-green-800 px-4 py-3 text-sm text-green-400">
                   {message}
                 </div>
               )}
 
               <Button
                 type="submit"
-                className="mt-2 h-11 w-full rounded-lg bg-black text-sm font-medium text-white transition-colors hover:bg-neutral-800"
+                className="mt-2 h-11 w-full rounded-lg bg-white text-sm font-medium text-black transition-colors hover:bg-neutral-200"
                 disabled={loading}
               >
                 {loading ? (
@@ -279,17 +406,18 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
             {/* Divider */}
             <div className="my-6 flex items-center gap-4">
-              <div className="h-px flex-1 bg-neutral-200" />
+              <div className="h-px flex-1 bg-neutral-700" />
               <span className="text-sm text-neutral-500">Or register with</span>
-              <div className="h-px flex-1 bg-neutral-200" />
+              <div className="h-px flex-1 bg-neutral-700" />
             </div>
 
             {/* Social Login */}
             <div className="flex gap-3">
               <Button
+                type="button"
                 variant="outline"
-                className="h-11 flex-1 gap-2 rounded-lg border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                disabled
+                className="h-11 flex-1 gap-2 rounded-lg border-neutral-700 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-200"
+                onClick={() => toast("Google — en desarrollo", { description: "Próximamente disponible" })}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path
@@ -312,9 +440,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 Google
               </Button>
               <Button
+                type="button"
                 variant="outline"
-                className="h-11 flex-1 gap-2 rounded-lg border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50"
-                disabled
+                className="h-11 flex-1 gap-2 rounded-lg border-neutral-700 bg-neutral-900 text-neutral-300 hover:bg-neutral-800 hover:text-neutral-200"
+                onClick={() => toast("Apple — en desarrollo", { description: "Próximamente disponible" })}
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
@@ -322,6 +451,8 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 Apple
               </Button>
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>

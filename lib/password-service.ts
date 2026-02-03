@@ -46,6 +46,56 @@ export function clearMasterKey(): void {
   }
 }
 
+// Generate a random vault key (32 bytes, base64). Used once per user, stored in DB.
+function generateRandomVaultKey(): string {
+  const bytes = new Uint8Array(32);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  }
+  return btoa(String.fromCharCode(...bytes));
+}
+
+/**
+ * Fetch the user's vault key from the DB (or create one if createIfMissing).
+ * Returns true if vault key was set, false if no row and not creating (existing user: use login password).
+ * Passwords are tied to the account (vault key), not the login password, so changing password keeps access.
+ */
+export async function fetchVaultKeyAndSet(createIfMissing = false): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: row, error: selectError } = await supabase
+    .from("user_vault_keys")
+    .select("encryption_key")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  // If table doesn't exist or error (e.g. RLS), return false so login can use password as key
+  if (selectError) {
+    return false;
+  }
+
+  if (row?.encryption_key) {
+    setMasterKey(row.encryption_key);
+    return true;
+  }
+
+  if (createIfMissing) {
+    const vaultKey = generateRandomVaultKey();
+    const { error: insertError } = await supabase
+      .from("user_vault_keys")
+      .insert({ user_id: user.id, encryption_key: vaultKey });
+    if (insertError) {
+      throw new Error("No se pudo crear la clave de la bóveda. Vuelve a intentar.");
+    }
+    setMasterKey(vaultKey);
+    return true;
+  }
+
+  return false;
+}
+
 export async function fetchPasswords(): Promise<DecryptedPasswordEntry[]> {
   const supabase = createClient();
   const masterKey = getMasterKey();
@@ -63,7 +113,7 @@ export async function fetchPasswords(): Promise<DecryptedPasswordEntry[]> {
     throw new Error(error.message);
   }
 
-  // Decrypt passwords client-side
+  // Decrypt passwords client-side (vault key is tied to account, not login password)
   const decryptedData: DecryptedPasswordEntry[] = await Promise.all(
     (data || []).map(async (entry: PasswordEntry) => {
       const decryptedPassword = await decryptPassword(

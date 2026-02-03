@@ -2,27 +2,27 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Vault - Password Manager',
+  title: 'Password Manager',
   description: 'Secure, minimal password manager for all your accounts',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
+        url: '/fav.png',
         media: '(prefers-color-scheme: light)',
       },
       {
-        url: '/icon-dark-32x32.png',
+        url: 'fav.png',
         media: '(prefers-color-scheme: dark)',
       },
       {
-        url: '/icon.svg',
+        url: '/fav.png',
         type: 'image/svg+xml',
       },
     ],
@@ -36,9 +36,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`font-sans antialiased`} suppressHydrationWarning>
         {children}
+        <Toaster
+          position="bottom-center"
+          toastOptions={{
+            className: "!bg-neutral-900 !border-neutral-700 !text-neutral-200 !rounded-lg !shadow-lg",
+            duration: 3000,
+          }}
+        />
         <Analytics />
       </body>
     </html>

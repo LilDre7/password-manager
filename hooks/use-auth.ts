@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { setMasterKey, clearMasterKey } from "@/lib/password-service";
+import { fetchVaultKeyAndSet, setMasterKey, clearMasterKey } from "@/lib/password-service";
 import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
@@ -11,9 +11,13 @@ export function useAuth() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Get initial session and load vault key if user is logged in
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
+      if (user) {
+        // Try to load vault key; if it fails (e.g. no row), don't clear - key may be set on next signIn
+        fetchVaultKeyAndSet(false).catch(() => {});
+      }
       setLoading(false);
     });
 
@@ -24,6 +28,9 @@ export function useAuth() {
       setUser(session?.user ?? null);
       if (!session?.user) {
         clearMasterKey();
+      } else {
+        // Try to load vault key; do NOT clear on failure - signIn may have just set password as key
+        fetchVaultKeyAndSet(false).catch(() => {});
       }
     });
 
@@ -41,9 +48,9 @@ export function useAuth() {
         throw error;
       }
 
-      // Use the password as the master key for encryption
-      // In production, you might want a separate master password
-      setMasterKey(password);
+      // Load vault key for this account; if none (existing user), use login password
+      const hasVaultKey = await fetchVaultKeyAndSet(false);
+      if (!hasVaultKey) setMasterKey(password);
 
       return data;
     },
@@ -66,8 +73,10 @@ export function useAuth() {
         throw error;
       }
 
-      // Set master key on signup too
-      setMasterKey(password);
+      // If we have a session (e.g. no email confirmation), create vault key for new user
+      if (data.session) {
+        await fetchVaultKeyAndSet(true);
+      }
 
       return data;
     },
@@ -82,11 +91,35 @@ export function useAuth() {
     }
   }, [supabase.auth]);
 
+  const resetPasswordForEmail = useCallback(
+    async (email: string) => {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/reset-password`
+          : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+      if (error) throw error;
+    },
+    [supabase.auth]
+  );
+
+  const updatePassword = useCallback(
+    async (newPassword: string) => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+    },
+    [supabase.auth]
+  );
+
   return {
     user,
     loading,
     signIn,
     signUp,
     signOut,
+    resetPasswordForEmail,
+    updatePassword,
   };
 }

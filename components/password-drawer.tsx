@@ -1,12 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { PasswordEntry, categoryColors } from "@/lib/types";
+import { toast } from "sonner";
+import { PasswordEntry, categoryColors, type Category } from "@/lib/types";
 import { ServiceIcon } from "./service-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -46,6 +54,15 @@ export function PasswordDrawer({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<PasswordEntry | null>(null);
 
+  const categories: Category[] = [
+    "Social",
+    "Bank",
+    "Learning",
+    "Business",
+    "Government",
+    "Technology",
+  ];
+
   if (!entry) return null;
 
   const handleCopy = async () => {
@@ -62,6 +79,9 @@ export function PasswordDrawer({
   const handleSaveEdit = () => {
     if (editForm) {
       onEdit(editForm);
+      toast("Contraseña actualizada", {
+        description: "Los cambios se han guardado correctamente",
+      });
       setIsEditing(false);
       setEditForm(null);
     }
@@ -119,6 +139,32 @@ export function PasswordDrawer({
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">
           {isEditing && editForm ? (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category" className="text-muted-foreground">
+                  Category
+                </Label>
+                <Select
+                  value={editForm.category}
+                  onValueChange={(value: Category) =>
+                    setEditForm({ ...editForm, category: value })
+                  }
+                >
+                  <SelectTrigger
+                    id="edit-category"
+                    className="border-border bg-secondary"
+                  >
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="edit-username" className="text-muted-foreground">
                   Email / Username
