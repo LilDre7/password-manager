@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { PasswordEntry, categoryColors, type Category } from "@/lib/types";
 import { ServiceIcon } from "./service-icon";
 import { Button } from "@/components/ui/button";
@@ -79,9 +78,6 @@ export function PasswordDrawer({
   const handleSaveEdit = () => {
     if (editForm) {
       onEdit(editForm);
-      toast("Contraseña actualizada", {
-        description: "Los cambios se han guardado correctamente",
-      });
       setIsEditing(false);
       setEditForm(null);
     }

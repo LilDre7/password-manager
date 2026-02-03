@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { toast } from "sonner";
 import { PasswordEntry, Category } from "@/lib/types";
 import {
   fetchPasswords,
@@ -165,23 +166,34 @@ export function Dashboard({ onLogout }: DashboardProps) {
         ...result,
         category: result.category as Category,
       });
+      toast("Contraseña actualizada", {
+        description: `${result.service_name} se ha actualizado correctamente`,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update password";
       if (handleMasterKeyError(errorMessage)) return;
-      setError(errorMessage);
+      toast.error("Error al actualizar", {
+        description: errorMessage,
+      });
     }
   };
 
   const handleDelete = async (id: string) => {
+    const entryToDelete = passwords.find((p) => p.id === id);
     try {
       await deletePassword(id);
       setPasswords((prev) => prev.filter((p) => p.id !== id));
       setDrawerOpen(false);
       setSelectedEntry(null);
+      toast("Contraseña eliminada", {
+        description: entryToDelete ? `${entryToDelete.service_name} se ha eliminado` : "La contraseña se ha eliminado",
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete password";
       if (handleMasterKeyError(errorMessage)) return;
-      setError(errorMessage);
+      toast.error("Error al eliminar", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -206,10 +218,15 @@ export function Dashboard({ onLogout }: DashboardProps) {
         },
         ...prev,
       ]);
+      toast("Contraseña guardada", {
+        description: `${result.service_name} se ha agregado a tu vault`,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add password";
       if (handleMasterKeyError(errorMessage)) return;
-      setError(errorMessage);
+      toast.error("Error al guardar", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -255,9 +272,15 @@ export function Dashboard({ onLogout }: DashboardProps) {
       setNeedsMasterKey(false);
       setUnlockPassword("");
       setShowUnlockPassword(false);
+      toast("Vault desbloqueado", {
+        description: "Tus contraseñas están disponibles",
+      });
     } catch (err) {
       // If decryption fails, the password is wrong
       setUnlockError("Contraseña incorrecta. Usa la contraseña con la que creaste tu cuenta.");
+      toast.error("Error al desbloquear", {
+        description: "La contraseña es incorrecta",
+      });
     } finally {
       setUnlockLoading(false);
     }
@@ -306,19 +329,6 @@ export function Dashboard({ onLogout }: DashboardProps) {
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {error && (
-          <div className="mb-6 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
-            <button
-              type="button"
-              onClick={() => setError(null)}
-              className="ml-2 underline"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
         {/* Stats */}
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-2xl border border-border bg-card p-4">
