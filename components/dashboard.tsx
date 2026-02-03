@@ -7,6 +7,7 @@ import {
   createPassword,
   updatePassword,
   deletePassword,
+  setMasterKey,
   type PasswordCategory,
 } from "@/lib/password-service";
 import { PasswordCard } from "./password-card";
@@ -16,7 +17,15 @@ import { CategoryFilter } from "./category-filter";
 import { SortDropdown, SortOption } from "./sort-dropdown";
 import { AddPasswordDialog } from "./add-password-dialog";
 import { Button } from "@/components/ui/button";
-import { Shield, LogOut, Lock, Loader2, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Shield, LogOut, Lock, Loader2, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface DashboardProps {
@@ -27,6 +36,11 @@ export function Dashboard({ onLogout }: DashboardProps) {
   const [passwords, setPasswords] = useState<PasswordEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsMasterKey, setNeedsMasterKey] = useState(false);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [unlockLoading, setUnlockLoading] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<Category | "All">("All");
   const [sortOption, setSortOption] = useState<SortOption>("date-desc");
@@ -55,13 +69,13 @@ export function Dashboard({ onLogout }: DashboardProps) {
           updated_at: item.updated_at,
         }))
       );
+      setNeedsMasterKey(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load passwords";
       
-      // If master key is missing, force logout to re-authenticate
+      // If master key is missing, show unlock dialog instead of forcing logout
       if (errorMessage.includes("Master key not found")) {
-        await signOut();
-        onLogout();
+        setNeedsMasterKey(true);
         return;
       }
       
@@ -117,11 +131,10 @@ export function Dashboard({ onLogout }: DashboardProps) {
     setDrawerOpen(true);
   };
 
-  // Helper to handle master key errors
-  const handleMasterKeyError = async (errorMessage: string): Promise<boolean> => {
+  // Helper to handle master key errors - show unlock dialog instead of forcing logout
+  const handleMasterKeyError = (errorMessage: string): boolean => {
     if (errorMessage.includes("Master key not found")) {
-      await signOut();
-      onLogout();
+      setNeedsMasterKey(true);
       return true;
     }
     return false;
@@ -154,7 +167,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update password";
-      if (await handleMasterKeyError(errorMessage)) return;
+      if (handleMasterKeyError(errorMessage)) return;
       setError(errorMessage);
     }
   };
@@ -167,7 +180,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
       setSelectedEntry(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete password";
-      if (await handleMasterKeyError(errorMessage)) return;
+      if (handleMasterKeyError(errorMessage)) return;
       setError(errorMessage);
     }
   };
@@ -195,7 +208,7 @@ export function Dashboard({ onLogout }: DashboardProps) {
       ]);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add password";
-      if (await handleMasterKeyError(errorMessage)) return;
+      if (handleMasterKeyError(errorMessage)) return;
       setError(errorMessage);
     }
   };
@@ -206,6 +219,47 @@ export function Dashboard({ onLogout }: DashboardProps) {
       onLogout();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign out");
+    }
+  };
+
+  // Handle unlocking the vault with the user's password
+  const handleUnlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unlockPassword.trim()) return;
+    
+    setUnlockLoading(true);
+    setUnlockError(null);
+    
+    try {
+      // Set the password as the master key
+      setMasterKey(unlockPassword);
+      
+      // Try to load passwords to verify the key works
+      const data = await fetchPasswords();
+      setPasswords(
+        data.map((item) => ({
+          id: item.id,
+          user_id: item.user_id,
+          service_name: item.service_name,
+          username: item.username,
+          password: item.password,
+          website: item.website,
+          category: item.category as Category,
+          notes: item.notes,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        }))
+      );
+      
+      // Success - close dialog and reset state
+      setNeedsMasterKey(false);
+      setUnlockPassword("");
+      setShowUnlockPassword(false);
+    } catch (err) {
+      // If decryption fails, the password is wrong
+      setUnlockError("Contraseña incorrecta. Usa la contraseña con la que creaste tu cuenta.");
+    } finally {
+      setUnlockLoading(false);
     }
   };
 
@@ -378,6 +432,80 @@ export function Dashboard({ onLogout }: DashboardProps) {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+
+      {/* Unlock Vault Dialog */}
+      <Dialog open={needsMasterKey} onOpenChange={() => {}}>
+        <DialogContent 
+          className="sm:max-w-md border-neutral-800 bg-neutral-900"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+              <Lock className="h-7 w-7 text-primary" />
+            </div>
+            <DialogTitle className="text-center text-xl text-white">
+              Desbloquear Vault
+            </DialogTitle>
+            <DialogDescription className="text-center text-neutral-400">
+              Tu sesión requiere autenticación. Ingresa tu contraseña para acceder a tus contraseñas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUnlock} className="mt-4 flex flex-col gap-4">
+            <div className="relative">
+              <Input
+                type={showUnlockPassword ? "text" : "password"}
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+                placeholder="Contraseña"
+                className="h-11 rounded-lg border-neutral-700 bg-neutral-800 pr-10 text-white placeholder:text-neutral-500 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500"
+                required
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setShowUnlockPassword(!showUnlockPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 transition-colors hover:text-neutral-300"
+              >
+                {showUnlockPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            {unlockError && (
+              <div className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-400">
+                {unlockError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Button
+                type="submit"
+                className="h-11 w-full rounded-lg bg-white text-sm font-medium text-black hover:bg-neutral-200"
+                disabled={unlockLoading}
+              >
+                {unlockLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Desbloquear"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 w-full rounded-lg text-sm text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                onClick={handleLogout}
+              >
+                Cerrar sesión
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
