@@ -29,7 +29,7 @@ export interface DecryptedPasswordEntry extends Omit<PasswordEntry, "encrypted_p
 }
 
 // Get master key from session storage (set during login)
-function getMasterKey(): string | null {
+export function getMasterKey(): string | null {
   if (typeof window === "undefined") return null;
   return sessionStorage.getItem("vault_master_key");
 }

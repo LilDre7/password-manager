@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { fetchVaultKeyAndSet, setMasterKey, clearMasterKey } from "@/lib/password-service";
+import { fetchVaultKeyAndSet, setMasterKey, clearMasterKey, getMasterKey } from "@/lib/password-service";
 import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  
+  // Track if we're in the middle of a sign-in to prevent race conditions
+  const isSigningIn = useRef(false);
 
   useEffect(() => {
     // Get initial session and load vault key if user is logged in
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
-      if (user) {
-        // Try to load vault key; if it fails (e.g. no row), don't clear - key may be set on next signIn
+      if (user && !getMasterKey()) {
+        // Only try to load vault key if not already set
         fetchVaultKeyAndSet(false).catch(() => {});
       }
       setLoading(false);
@@ -28,8 +31,8 @@ export function useAuth() {
       setUser(session?.user ?? null);
       if (!session?.user) {
         clearMasterKey();
-      } else {
-        // Try to load vault key; do NOT clear on failure - signIn may have just set password as key
+      } else if (!isSigningIn.current && !getMasterKey()) {
+        // Only try to load vault key if not currently signing in and key not already set
         fetchVaultKeyAndSet(false).catch(() => {});
       }
     });
@@ -39,20 +42,32 @@ export function useAuth() {
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Mark that we're signing in to prevent race condition with onAuthStateChange
+      isSigningIn.current = true;
+      
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        // Load vault key for this account; if none (existing user), use login password
+        const hasVaultKey = await fetchVaultKeyAndSet(false);
+        if (!hasVaultKey) {
+          setMasterKey(password);
+        }
+
+        return data;
+      } finally {
+        // Reset the flag after a short delay to ensure onAuthStateChange has processed
+        setTimeout(() => {
+          isSigningIn.current = false;
+        }, 100);
       }
-
-      // Load vault key for this account; if none (existing user), use login password
-      const hasVaultKey = await fetchVaultKeyAndSet(false);
-      if (!hasVaultKey) setMasterKey(password);
-
-      return data;
     },
     [supabase.auth]
   );

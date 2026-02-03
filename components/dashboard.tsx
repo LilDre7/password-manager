@@ -56,7 +56,16 @@ export function Dashboard({ onLogout }: DashboardProps) {
         }))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load passwords");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load passwords";
+      
+      // If master key is missing, force logout to re-authenticate
+      if (errorMessage.includes("Master key not found")) {
+        await signOut();
+        onLogout();
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -108,6 +117,16 @@ export function Dashboard({ onLogout }: DashboardProps) {
     setDrawerOpen(true);
   };
 
+  // Helper to handle master key errors
+  const handleMasterKeyError = async (errorMessage: string): Promise<boolean> => {
+    if (errorMessage.includes("Master key not found")) {
+      await signOut();
+      onLogout();
+      return true;
+    }
+    return false;
+  };
+
   const handleEdit = async (updatedEntry: PasswordEntry) => {
     try {
       const result = await updatePassword(updatedEntry.id, {
@@ -134,7 +153,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
         category: result.category as Category,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update password");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update password";
+      if (await handleMasterKeyError(errorMessage)) return;
+      setError(errorMessage);
     }
   };
 
@@ -145,7 +166,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
       setDrawerOpen(false);
       setSelectedEntry(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete password");
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete password";
+      if (await handleMasterKeyError(errorMessage)) return;
+      setError(errorMessage);
     }
   };
 
@@ -171,7 +194,9 @@ export function Dashboard({ onLogout }: DashboardProps) {
         ...prev,
       ]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add password");
+      const errorMessage = err instanceof Error ? err.message : "Failed to add password";
+      if (await handleMasterKeyError(errorMessage)) return;
+      setError(errorMessage);
     }
   };
 
