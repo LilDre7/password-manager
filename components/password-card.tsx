@@ -31,7 +31,7 @@ export function PasswordCard({ entry, onClick }: PasswordCardProps) {
           )}
         >
           {entry.category}
-        </span>
+        </span>h
       </div>
 
       <div className="flex flex-col gap-1">

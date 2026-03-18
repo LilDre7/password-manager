@@ -290,7 +290,7 @@ export function PasswordDrawer({
                     href={entry.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-3 text-sm text-primary transition-colors hover:bg-accent"
+                    className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-3 text-sm text-primary transition-colors hover:bg-accent bg-red-600"
                   >
                     {entry.website}
                     <ExternalLink className="h-3 w-3" />
